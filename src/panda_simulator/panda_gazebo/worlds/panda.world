@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    
+    <include>
+      <uri>/home/jaykay/Master_Project/src/Compliant_control/Gazebo objects/All_green</uri>
+      <pose>1.5 0 0 0 0 0</pose>
+      <static>True</static>
+    </include>
+
+    <physics type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    
+    <gravity>
+      0.0 0.0 0.0
+    </gravity>
+
+    <gui fullscreen='0'>
+    </gui>
+
+  </world>
+</sdf>
