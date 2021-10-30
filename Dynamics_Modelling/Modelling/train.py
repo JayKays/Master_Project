@@ -7,4 +7,4 @@ import mbrl.util.replay_buffer as replay_buffer
 
 
 
-print("Check")
+print("Check!")
