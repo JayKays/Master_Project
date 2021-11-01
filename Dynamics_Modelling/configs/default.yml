@@ -1,0 +1,16 @@
+
+
+
+cfg:
+
+  log:
+    logging: True
+    log_dir: "Dynamics_Modelling/Logs"
+
+  training:
+    lr: 0.01
+  
+  data:
+    obs_shape: (1,)
+    
+
