@@ -9,42 +9,19 @@ import numpy as np
 
 from Modelling.Models.BNN import BNN
 
-def data(num_samples = 100):
 
-    # x_data = np.linspace(-12, 12, num_samples)
-    # y_data = np.sin(x_data)
+def data(file_path, state_idx, act_idx):
 
-    x_data = np.linspace(-12, 12, 10000)
-    y_data = np.sin(x_data)
+    data_arr = np.loadt(file_path)
+    
+    state_obs = data_arr[state_idx]
+    
+    if act_idx is not None:
+        actions = data_arr[act_idx]
 
-    train_size = 2000
-    val_size = 200
-    x_train = np.zeros(2 * train_size)
-    y_train = np.zeros(2 * train_size)
-    x_val = np.zeros(2 * val_size)
-    y_val = np.zeros(2 * val_size)
-
-    # Half with lower noise
-    train_val_idx_1 = np.random.choice(list(range(1200, 3500)), 
-                                    size=train_size + val_size, 
-                                    replace=False)
-    mag = 0.05
-    x_train[:train_size] = x_data[train_val_idx_1[:train_size]]
-    y_train[:train_size] = y_data[train_val_idx_1[:train_size]] + mag * np.random.randn(train_size)
-    x_val[:val_size] = x_data[train_val_idx_1[train_size:]]
-    y_val[:val_size] = y_data[train_val_idx_1[train_size:]] + mag * np.random.randn(val_size)
-
-    # Half with higher noise
-    train_val_idx_2 = np.random.choice(list(range(6500, 8800)), 
-                                    size=train_size + val_size, 
-                                    replace=False)
-    mag = 0.20
-    x_train[train_size:] = x_data[train_val_idx_2[:train_size]]
-    y_train[train_size:] = y_data[train_val_idx_2[:train_size]] + mag * np.random.randn(train_size)
-    x_val[val_size:] = x_data[train_val_idx_2[train_size:]]
-    y_val[val_size:] = y_data[train_val_idx_2[train_size:]] + mag * np.random.randn(val_size)
-
-    return DotMap({'x':x_train, 'y': y_train})
+        return state_obs, actions
+    
+    return state_obs, None
 
 
 def main():

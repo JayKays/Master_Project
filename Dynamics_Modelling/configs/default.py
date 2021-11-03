@@ -27,12 +27,14 @@ cfg_dict = {
         "target_is_delta": False
     }
 }
+
 '''
--model_batch_size (int)
--validation_ratio (float)
--num_epochs_train_model (int, optional)
--patience (int, optional)
--bootstrap_permutes (bool, optional)
+Required for mbrl-lib train method:
+    -model_batch_size (int)
+    -validation_ratio (float)
+    -num_epochs_train_model (int, optional)
+    -patience (int, optional)
+    -bootstrap_permutes (bool, optional)
 '''
 
 
