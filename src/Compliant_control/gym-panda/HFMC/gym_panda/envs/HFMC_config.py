@@ -13,19 +13,21 @@ NOISE_FRACTION = 0.015 #standard deviation of the noise is 1 % of the force-valu
 
 Fd = 3
 PUBLISH_RATE =100
-duration = 5
+duration = 10
+z_max = 0.585#5.91776e-01
+z_min = 0.582
 
 #ACTION SPACE
 KD_LAMBDA_LOWER = 0
 KD_LAMBDA_UPPER = 15
 
 KP_LAMBDA_LOWER = 10
-KP_LAMBDA_UPPER = 90
+KP_LAMBDA_UPPER = 600#90
 
 KP_POS_LOWER = 125
 KP_POS_UPPER =  175
 
-#initialization
+#initialization  to run the controller without learning
 
 KD_LAMBDA_INIT = 1
 KP_LAMBDA_INIT = 15

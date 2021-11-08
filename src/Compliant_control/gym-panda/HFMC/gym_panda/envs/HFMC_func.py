@@ -56,7 +56,8 @@ cartboard = {'panda_joint1': 1.5100039307153879, 'panda_joint2': 0.6066719992230
 
 """Functions for generating desired MOTION trajectories"""
 
-def generate_desired_trajectory(robot,max_num_it,T,sim,move_in_x=True):
+#from HFMC
+def generate_desired_trajectory_hfmc(robot,max_num_it,T,sim,move_in_x=True):
     a = np.zeros((5,max_num_it))
     v = np.zeros((5,max_num_it))
     s = np.zeros((2,max_num_it))
@@ -66,11 +67,11 @@ def generate_desired_trajectory(robot,max_num_it,T,sim,move_in_x=True):
     if move_in_x:
         if sim:
             #print("sdf")
-            a[0,int(max_num_it*0.2/10):int(max_num_it*5/10)]=0.01
-            a[0,int(max_num_it*5/10):int(max_num_it*9.8/10)]=-0.01
+            a[0,int(max_num_it*0.2/10):int(max_num_it*5/10)]=0
+            a[0,int(max_num_it*5/10):int(max_num_it*9.8/10)]=-0
         else:
-            a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0.0125
-            a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0.0125
+            a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0
+            a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0
 
 
     for i in range(max_num_it):
@@ -80,6 +81,39 @@ def generate_desired_trajectory(robot,max_num_it,T,sim,move_in_x=True):
     #print(s)
     return a,v,s
 
+#from VIC
+def generate_desired_trajectory(robot,max_num_it,T,sim, z_min, z_max, random_force=True, move_in_x=True, ):
+    a = np.zeros((6,max_num_it))
+    v = np.zeros((6,max_num_it))
+    s = np.zeros((3,max_num_it))
+    
+    s[:,0]= np.array([ 3.069120e-01, -1.035505e-05,  5.901776e-01])
+    #s[:,0]= robot.endpoint_pose()['position']
+    """
+    if move_down:
+        a[2,0:10]=-0.5
+        a[2,30:40]= 0.5
+    """
+    #s[2,0] -= 0.2 #0.1
+    #s[2,0] += 0.2
+
+    if move_in_x:
+        if sim:
+            a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0.05
+            a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0.05
+        else:
+            a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0.0125
+            a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0.0125
+
+
+
+    for i in range(max_num_it):
+        if i>0:
+            v[:,i]=v[:,i-1]+a[:,i-1]*T
+            s[:,i]=s[:,i-1]+v[:3,i-1]*T
+            if random_force:
+                s[2,i] = np.random.uniform(z_min,z_max)
+    return a,v,s
 
 
 """Functions for generating desired FORCE trajectories"""

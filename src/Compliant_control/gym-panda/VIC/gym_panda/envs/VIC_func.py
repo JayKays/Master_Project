@@ -56,24 +56,24 @@ cartboard = {'panda_joint1': 1.5100039307153879, 'panda_joint2': 0.6066719992230
 
 """Functions for generating desired MOTION trajectories"""
 
-def generate_desired_trajectory(robot,max_num_it,T,sim,move_down=True, move_in_x=True):
+def generate_desired_trajectory(robot,max_num_it,T,sim, z_min, z_max, random_force=False, move_in_x=True, ):
     a = np.zeros((6,max_num_it))
     v = np.zeros((6,max_num_it))
     s = np.zeros((3,max_num_it))
     
-    s[:,0]= robot.endpoint_pose()['position']
+    s[:,0]= robot.endpoint_pose()['position'] #np.array([ 3.069120e-01, -1.035505e-05,  5.901776e-01])#
     """
     if move_down:
         a[2,0:10]=-0.5
         a[2,30:40]= 0.5
     """
-    s[2,0] -= 0.2 #0.1
+    #s[2,0] -= 0.2 #0.1
     #s[2,0] += 0.2
 
     if move_in_x:
         if sim:
-            a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0.05
-            a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0.05
+            a[0,int(max_num_it*0/10):int(max_num_it*5/10)]=0#0.05
+            a[0,int(max_num_it*5/10):int(max_num_it*10/10)]=-0#0.05
         else:
             a[0,int(max_num_it*4/10):int(max_num_it*6/10)]=0.0125
             a[0,int(max_num_it*6/10):int(max_num_it*8/10)]=-0.0125
@@ -84,8 +84,30 @@ def generate_desired_trajectory(robot,max_num_it,T,sim,move_down=True, move_in_x
         if i>0:
             v[:,i]=v[:,i-1]+a[:,i-1]*T
             s[:,i]=s[:,i-1]+v[:3,i-1]*T
+            if random_force:
+                s[2,i] = np.random.uniform(z_min,z_max)
     return a,v,s
 
+def generate_desired_trajectory_tc(robot, max_num_it,T,move_in_x=False, move_down=True):
+    a = np.zeros((6,max_num_it))
+    v = np.zeros((6,max_num_it))
+    p = np.zeros((3,max_num_it))
+    p[:,0] = robot.endpoint_pose()['position']
+    
+    if move_down:
+        a[2,0:int(max_num_it/75)]=-0.25
+        a[2,int(max_num_it*2/75):int(max_num_it/25)]= 0.25
+
+
+    if move_in_x:
+        a[0,int(max_num_it*3/10):int(max_num_it*4/10)]=0.01
+        a[0,int(max_num_it*7/10):int(max_num_it*8/10)]=-0.01
+
+    for i in range(max_num_it):
+        if i>0:
+            v[:,i]=v[:,i-1]+a[:,i-1]*T
+            p[:,i]=p[:,i-1]+v[:3,i-1]*T
+    return a,v,p
 
 
 """Functions for generating desired FORCE trajectories"""
