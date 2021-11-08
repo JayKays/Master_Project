@@ -7,19 +7,15 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-import mbrl.util.math
-
 from mbrl.models.model import Ensemble
-from mbrl.models.util import EnsembleLinearLayer, truncated_normal_init
-
 from blitz.modules.base_bayesian_module import BayesianModule
-from blitz.losses.kl_divergence import kl_divergence_from_nn
+from .linear_ensemble_layer import BayesianLinearEnsembleLayer
 
-from .bayesianLayer import EnsembleLinearBayesian
 
 class BNN(Ensemble):
-    """Implements a linear Bayesian Ensemble with the help of blitz,
-    in a similar fassion as the Gaussian MLP from mbrl-lib.
+    """
+    Implements a linear Bayesian Ensemble with the help of blitz,
+    in a similar fassion as the Gaussian MLP from mbrl-lib
     """
 
     def __init__(
@@ -35,6 +31,8 @@ class BNN(Ensemble):
         propagation_method: Optional[str] = None,
         learn_logvar_bounds: bool = False,
         activation_fn_cfg: Optional[Union[Dict, omegaconf.DictConfig]] = None,
+        prior_sigma: Tuple = (0.5, 0.01),
+        prior_pi: float = 0.8
     ):
         super().__init__(
             ensemble_size, device, propagation_method, deterministic=deterministic
@@ -42,6 +40,9 @@ class BNN(Ensemble):
 
         self.in_size = in_size
         self.out_size = out_size
+        self.prior_sigma1 = prior_sigma[0]
+        self.prior_sigma2 = prior_sigma[1]
+        self.prior_pi = prior_pi
 
         def create_activation():
             if activation_fn_cfg is None:
@@ -53,7 +54,7 @@ class BNN(Ensemble):
             return activation_func
 
         def create_linear_layer(l_in, l_out):
-            return EnsembleLinearBayesian(ensemble_size, l_in, l_out, device=self.device)
+            return BayesianLinearEnsembleLayer(ensemble_size, l_in, l_out,prior_pi=self.prior_pi, prior_sigma_1=self.prior_sigma1, prior_sigma_2=self.prior_sigma2)
 
         hidden_layers = [
             nn.Sequential(create_linear_layer(in_size, hid_size), create_activation())
@@ -67,13 +68,9 @@ class BNN(Ensemble):
                 )
             )
         self.hidden_layers = nn.Sequential(*hidden_layers)
-
         self.output_layer = create_linear_layer(hid_size, out_size)
-        
-        # self.apply(truncated_normal_init)
 
         self.freeze = freeze
-
         if self.freeze: self.freeze_model()
 
         self.to(self.device)
@@ -211,7 +208,7 @@ class BNN(Ensemble):
             loss = self._mse_loss(model_in, target)
         else:
             loss = self.sample_elbo(model_in, target)
-        # print(loss)
+        
         return loss, {}
 
     def nn_kl_divergence(self):
@@ -230,11 +227,10 @@ class BNN(Ensemble):
 
         return kl_divergence
 
-    
     def sample_elbo(self,
                     inputs,
                     labels,
-                    sample_nbr = 10,
+                    sample_nbr = 5,
                     complexity_cost_weight=1):
 
         """ Samples the ELBO Loss for a batch of data, consisting of inputs and corresponding-by-index labels
@@ -256,7 +252,7 @@ class BNN(Ensemble):
     
         for _ in range(sample_nbr):
             loss += self._mse_loss(inputs, labels)
-            loss += self.nn_kl_divergence().mean() * complexity_cost_weight
+            loss += self.nn_kl_divergence() * complexity_cost_weight
 
         return loss / sample_nbr
     
@@ -337,7 +333,6 @@ class BNN(Ensemble):
 
 
 if __name__ == "__main__":
-    from blitz.losses.kl_divergence import kl_divergence_from_nn
 
     input_size = 5
     output_size = 4
