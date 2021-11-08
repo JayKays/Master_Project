@@ -1,6 +1,6 @@
 
 
-from sys import last_traceback
+# from sys import last_traceback
 import yaml
 from rosbag.bag import Bag
 import matplotlib.pyplot as plt
@@ -131,10 +131,13 @@ def save_states_from_bag(bag_file, output_file,
 
 
 if __name__ == "__main__":
-    test_file   = "rosbag_record_folder/_2021-11-02-16-10-34.bag"
+    # test_file   = "rosbag_record_folder/_2021-11-02-16-10-34.bag"
     # test_file   = "rosbag_record_folder/_2021-11-02-16-13-34.bag"
-    test_file = "rosbag_record_folder/_2021-11-02-17-08-29.bag"
-    save_file = "processed_data/alternating.npy"
+    # test_file = "rosbag_record_folder/_2021-11-08-12-39-20.bag"
+    # test_file = "rosbag_record_folder/_2021-11-08-12-57-54.bag"
+    # test_file = "rosbag_record_folder/_2021-11-08-13-02-47.bag"
+    test_file = "rosbag_record_folder/_2021-11-08-13-19-41.bag"
+    save_file = "processed_data/stand_still.npy"
     topics, types = get_topics(test_file)
     print(topics)
     print(types)
