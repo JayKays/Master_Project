@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 from mbrl.models.model import Ensemble
 from blitz.modules.base_bayesian_module import BayesianModule
-from .linear_ensemble_layer import BayesianLinearEnsembleLayer
+from .bayesianEnsembleLayer import BayesianLinearEnsembleLayer
 
 
 class BNN(Ensemble):
