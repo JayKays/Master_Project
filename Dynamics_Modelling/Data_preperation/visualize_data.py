@@ -1,8 +1,7 @@
 
 from matplotlib import pyplot as plt
 
-import numpy as np
-from filering import lowpass_fft, butter_lowpass
+
 
 STATES = ["time", "Force-x", "Force-y", "Force-z", \
     "Torque-x", "Torque-y", "Torque-z", "Pos-x", "Pos-y", \
@@ -76,8 +75,10 @@ def plot_end_pos(data_arr):
     plt.plot(data_arr[:,9])
     plt.title("z")
 
-def plot_filter_comp(data_arr, filtered_data, idx):
+def plot_filter_comp(data_arr, filtered_data, idx, f_idx = None):
 
+    if f_idx is None:
+        f_idx = idx
     num_plots = len(idx)
 
     plt.figure()
@@ -85,11 +86,10 @@ def plot_filter_comp(data_arr, filtered_data, idx):
     for n in range(num_plots):
         plt.subplot(1, num_plots, n+1)
         plt.plot(data_arr[:,idx[n]])
-        plt.plot(filtered_data[:,idx[n]])
+        if idx[n] in f_idx:
+            plt.plot(filtered_data[:,idx[n]])
+            plt.legend(["data", "filtered"])
         plt.title(STATES[idx[n]])
-
-    plt.legend(["data", "filtered"])
-
 
 def plot_states(data_arr, idx):
 
@@ -104,11 +104,17 @@ def plot_states(data_arr, idx):
 
     plt.legend(["data", "filtered"])
 
+
 if __name__ == "__main__":
+    import numpy as np
+    from filtering import lowpass_fft, lowpass_butter
 
-    data = np.load("processed_data/something1.npy")
-    data = np.load("processed_data/VIC_data.npy")[:1800,:]
-
-    plot_filter_comp(data, lowpass_fft(data.copy(), fs = 100, cutoff=6, idx=[1,2,3]), idx=[1,2,3])
-
-    plt.show()
+    '''
+    idx_list: 
+    t       0
+    Force   1,  2,  3
+    Torque  4,  5,  6
+    Pos     7,  8,  9
+    Vel     10, 11, 12
+    Ang.vel 13, 14, 15
+    '''
