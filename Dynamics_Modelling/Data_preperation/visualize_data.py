@@ -37,12 +37,6 @@ def visualize_states(data_arr):
     plt.plot(data_arr[:,12])
     plt.title("z-Vel")
 
-
-def plot_2D_pos(data_arr):
-
-    plt.figure()
-    plt.plot(data[:,7], data[:,8])
-
 def plot_Force(data_arr, force_idx = [1,2,3]):
 
     plt.figure()
