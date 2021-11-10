@@ -116,17 +116,49 @@ def generate_Fd_steep(max_num_it,Fd,T):
     a = np.zeros((6,max_num_it))
     v = np.zeros((6,max_num_it))
     s = np.zeros((6,max_num_it))
+
     v[2,:] = 10
     for i in range(max_num_it):
         if i>0:
-
             s[2,i]=min(s[2,i-1]+v[2,i-1]*T,Fd)
     return s
 
+#Generates a random force trajectory, either a random linear decrease or a random constant force
+def generate_Fd_random(max_num_it, Fd, T, slope_prob = 0.7, Fmin = 3, Fmax = 7):
+    a = np.zeros((6,max_num_it))
+    v = np.zeros((6,max_num_it))
+    s = np.zeros((6,max_num_it))
+
+    slope = np.random.rand() < slope_prob
+
+    if not slope:
+        s[2,:] = np.random.uniform(Fmin, Fmax)
+        return s
+    
+    #Generates a random slope from Fmin to Fmax within sim time
+    sim_time = max_num_it*T
+    descent_duration = np.random.uniform(sim_time * 4/10, sim_time*8/10)
+    v[2,:] = (Fmax - Fmin)/descent_duration
+
+    num_slope_iterations = int(descent_duration/T)
+    slope_start = max_num_it//2 - num_slope_iterations//2
+    
+    s[2,:slope_start] = Fmin
+
+    for i in range(slope_start, max_num_it):
+        if i>0:
+            s[2,i]= min(Fmax, max(s[2,i-1]+v[2,i-1]*T, Fmin))
+
+    return s    
+
 # Generate a constant desired force [STABLE]
-def generate_Fd_constant(max_num_it,Fd):
+def generate_Fd_constant(max_num_it,Fd, random_force = False, Fmin = 3, Fmax = 7):
     s = np.zeros((6,max_num_it)) 
-    s[2,:] = Fd
+    
+    if random_force:
+        s[2,:] = np.random.uniform(Fmin, Fmax)
+    else:
+        s[2,:] = Fd
     return s
 
 # ------------ Helper functions --------------------------------

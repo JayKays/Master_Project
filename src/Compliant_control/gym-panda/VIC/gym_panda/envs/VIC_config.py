@@ -11,7 +11,11 @@ SIM_STATUS = True
 ADD_NOISE = True
 NOISE_FRACTION = 0.015 #standard deviation of the noise is now 1.5 % of the force-value
 
-Fd = 5
+#Force limits for varying desired force
+Fmin = 3
+Fmax = 7
+Fd = (Fmax - Fmin)/2
+
 PUBLISH_RATE = 100
 duration = 15
 z_max = 0.584#5.91776e-01
