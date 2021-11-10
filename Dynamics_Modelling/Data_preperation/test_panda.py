@@ -5,8 +5,6 @@ import rospy
 import sys
 from time import sleep
 
-from rosbag_record import RosbagRecord
-
 
 sys.path.append("/home/jensek/Project/src/Compliant_control/gym-panda/HFMC")
 sim = True
