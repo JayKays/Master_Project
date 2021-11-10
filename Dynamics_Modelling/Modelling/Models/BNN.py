@@ -14,8 +14,9 @@ from .bayesianEnsembleLayer import BayesianLinearEnsembleLayer
 
 class BNN(Ensemble):
     """
-    Implements a linear Bayesian Ensemble with the help of blitz,
-    in a similar fassion as the Gaussian MLP from mbrl-lib
+    Implements a linear Bayesian Ensemble
+    A lot of the functionality is re-purposed from the GaussianMLP in mbrl-lib:
+    https://github.com/facebookresearch/mbrl-lib/blob/main/mbrl/models/gaussian_mlp.py
     """
 
     def __init__(
@@ -166,7 +167,8 @@ class BNN(Ensemble):
         propagation_indices: Optional[torch.Tensor] = None,
         use_propagation: bool = True,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Predictions for the given input.
+        """
+        Predictions for the given input.
         """
         
         if use_propagation:
@@ -186,16 +188,16 @@ class BNN(Ensemble):
         model_in: torch.Tensor,
         target: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Dict[str, Any]]:
-        """Computes the samples the ELBO loss via variational MonteCarlo, if froze
-            the mse loss is instead calculated.
-        It also includes terms for ``max_logvar`` and ``min_logvar`` with small weights,
-        with positive and negative signs, respectively.
+        """Computes the total loss of the Network,
+        If model is frozen, the mse loss is computed
+        If not frozen, the estimated ELBO loss is computed
+        
         This function returns no metadata, so the second output is set to an empty dict.
         Args:
             model_in (tensor): input tensor. The shape must be ``E x B x Id``, or ``B x Id``
                 where ``E``, ``B`` and ``Id`` represent ensemble size, batch size, and input
                 dimension, respectively.
-            target (tensor): target tensor. The shape must be ``E x B x Id``, or ``B x Od``
+            target (tensor): target tensor. The shape must be ``E x B x Od``, or ``B x Od``
                 where ``E``, ``B`` and ``Od`` represent ensemble size, batch size, and output
                 dimension, respectively.
         Returns:
@@ -246,6 +248,8 @@ class BNN(Ensemble):
                         The shape of the labels must match the label-parameter shape of the criterion (one hot encoded or as index, if needed)
                 sample_nbr: int -> The number of times of the weight-sampling and predictions done in our Monte-Carlo approach to
                             gather the loss to be .backwarded in the optimization of the model.
+            Returns:
+                (tensor): Estimated ELBO loss for the model
         """
 
         loss = 0
@@ -298,23 +302,23 @@ class BNN(Ensemble):
 
     def freeze_model(self):
         """
-        Freezes the model by making it predict using only the expected value to their BayesianModules' weights distributions
+        Freezes the model by making predictions only using the expected values of the weight distributions
         """
-        self.freeze = True
-
         for module in self.modules():
             if isinstance(module, (BayesianModule)):
                 module.freeze = True
+
+        self.freeze = True
     
     def unfreeze_model(self):
         """
         Unfreezes the model by letting it draw its weights with uncertanity from their correspondent distributions
         """
-        self.freeze = False
-
         for module in self.modules():
             if isinstance(module, (BayesianModule)):
                 module.freeze = False
+
+        self.freeze = False
     
     def save(self, save_dir: Union[str, pathlib.Path]):
         """Saves the model to the given directory."""
@@ -330,32 +334,3 @@ class BNN(Ensemble):
         self.load_state_dict(model_dict["state_dict"])
         self.elite_models = model_dict["elite_models"]
 
-
-
-if __name__ == "__main__":
-
-    input_size = 5
-    output_size = 4
-    ensemble_size = 3
-    hid_size = 10
-    batch_size = 3
-    bnn = BNN(input_size, output_size, "cpu", num_layers= 2, ensemble_size=ensemble_size, hid_size=hid_size, propagation_method="expectation")
-    batch = torch.Tensor([[ 0.9863,  1.6332, -0.9724, -1.5080, -0.6192]])
-    target = torch.tensor([ 0.0009, -0.0945, -0.0004,  0.1456])
-    batch = torch.randn(batch_size, input_size, requires_grad=True)
-    print(batch)
-    test_labels = torch.empty(batch_size, dtype = int).random_(output_size)
-    test_ouput = bnn.forward(batch)
-    print(test_ouput)
-    print(test_labels)
-    print(F.one_hot(test_labels).float())
-    # print(nn.CrossEntropyLoss(test_ouput, test_labels))
-    optimizer = torch.optim.Adam(bnn.parameters(), lr = 1e-2)
-    # print(list(bnn.parameters()))
-
-    bnn.freeze_model()
-    loss = bnn.sample_elbo(batch, F.one_hot(test_labels, num_classes = output_size).float()-1, 10)
-    print(bnn.forward(batch))
-    loss.backward()
-    optimizer.step()
-    print(bnn.forward(batch))
