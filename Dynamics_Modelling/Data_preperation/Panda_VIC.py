@@ -475,6 +475,8 @@ class VIC_Env(gym.Env):
         self.data_for_plotting[15, :] = self.Kp_z_hist  # stiffness in z over time
         self.data_for_plotting[16, :] = self.Kp_pos_hist  # stiffness in x and y over time
 
+    def set_fd_constant(self, force):
+        self.f_d = force
 
 class Normalised_VIC_Env():
     def __init__(self, env_id, m, std):
@@ -518,19 +520,28 @@ if __name__ == "__main__":
     publish_rate = 100
     max_num_it = 15 * publish_rate
     env.set_not_learning()
-    action = np.array([0.0001*10 , 0.0001/10 ])
 
-    state_data = np.zeros((max_num_it,16))
+    num_trials = 20
+    forces = np.zeros(num_trials)
+    for n in range(num_trials):
+        env.reset()
+        state_data = np.zeros((max_num_it,16))
+        fd = func.generate_Fd_random(env.max_num_it, cfg.Fd, cfg.T, slope_prob = 0, Fmin = 3, Fmax = 10)
+        env.set_fd_constant(fd)
+        forces[n] = fd[2,0]
+        r = rospy.Rate(publish_rate)
+        for i in range(max_num_it):
+            start = time.time()
+            # action = np.array([0.0001*10 , 0.0001/10 ])
+            action = np.random.uniform(cfg.GAMMA_B_LOWER, cfg.GAMMA_B_UPPER, 2)
+            env.step(action)
+            timestep = time.time() - start
 
-    r = rospy.Rate(publish_rate)
-    for i in range(max_num_it):
-        start = time.time()
-        env.step(action)
-        timestep = time.time() - start
-
-        state_data[i,0] = timestep
-        state_data[i,1:] = state_list_from_dict(robot.get_full_state_space())
-        print("time taken is: ", 1 / (timestep))
-        # r.sleep()
-    np.save("test_VIC_rec2.npy", state_data)
-    print("finished")
+            # state_data[i,0] = timestep
+            # state_data[i,1:] = state_list_from_dict(robot.get_full_state_space())
+            # print("time taken is: ", 1 / (timestep))
+            # r.sleep()
+        print(f"Sample {n+1} of {num_trials} complete!")
+    # np.save("test_VIC_rec2.npy", state_data)
+    print("Forces for each trajectory: ",forces)
+    print(f"Finished {num_trials} trajectories")

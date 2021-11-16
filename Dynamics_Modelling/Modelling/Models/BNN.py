@@ -30,7 +30,6 @@ class BNN(Ensemble):
         deterministic: bool = True,
         freeze: bool = False,
         propagation_method: Optional[str] = None,
-        learn_logvar_bounds: bool = False,
         activation_fn_cfg: Optional[Union[Dict, omegaconf.DictConfig]] = None,
         prior_sigma: Tuple = (0.5, 0.01),
         prior_pi: float = 0.8
