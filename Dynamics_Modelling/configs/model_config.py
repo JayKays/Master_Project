@@ -10,15 +10,15 @@ model_cfg_dict = {
     #Input/output size must be inherited from training data
     'input_size': '???',
     'output_size': '???', 
-    'device': 'cuda:0' if not torch.cuda.is_available() else 'cpu',
+    'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
     'num_layers': 3,
     'propagation_method': None,
-
+    # 'activation_fn_cfg' : {"_target_": "torch.nn.LeakyReLU", 'negative_slope': 0.01},
+    'activation_fn_cfg': {"_target_": "torch.nn.SiLU"},
+    'hid_size': 150,
+    'ensemble_size': 5,
     #BNN spesific parameters
     'BNN': {
-        'hid_size': 200,
-        'activation_fn_cfg' : {"_target_": "torch.nn.SiLU", 'negative_slope': 0.01},
-        "ensemble_size": 5,
         'prior_sigma': (1, 0.01),
         'prior_pi': 0.8,
         'freeze': False
@@ -26,11 +26,8 @@ model_cfg_dict = {
 
     #PNN spesific parameters
     'PNN': {
-        'hid_size': 200,
-        'activation_fn_cfg' : {"_target_": "torch.nn.LeakyReLu", 'negative_slope': 0.01},
-        'ensemble_size': 5,
         'deterministic': False
-    }
+    }   
 }
-
 model_cfg = OmegaConf.create(model_cfg_dict)
+print(f"Model config device: {model_cfg.device}")
