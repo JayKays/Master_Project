@@ -8,6 +8,8 @@ from mbrl.models.gaussian_mlp import GaussianMLP
 from mbrl.models.one_dim_tr_model import OneDTransitionRewardModel
 
 
+#TODO: Change model cfg setup to use mbrl cfg structure for utility function support
+
 
 def train_data_from_array(data_arr, obs_idx = None, act_idx = None, use_act = False):
 
@@ -115,6 +117,7 @@ def load_model(load_dir):
         model,
         train_cfg.target_is_delta,
         train_cfg.normalize,
+        learned_rewards=train_cfg.get("learned_rewards", False)
     )
 
     wrapper.load(load_dir)

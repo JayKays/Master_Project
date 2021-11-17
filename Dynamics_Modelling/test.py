@@ -10,6 +10,7 @@ from configs.train_config import train_cfg
 
 from util import labeled_data, model_from_cfg, train_data_from_array, create_test_data, load_model, monte_carlo_mean_var
 from Modelling.train import  train
+from evaluator import DatasetEvaluator
 
 import matplotlib.pyplot as plt
 
@@ -77,13 +78,28 @@ def test_sine_model(model_wrapper):
     plt.title("Model prediction results")
     plt.show()
 
+def test_evaulator(model_dir, data_dir= None, out_dir = None):
+    
+    if data_dir is None:
+        data_dir = model_dir
+    
+    if out_dir is None:
+        out_dir = model_dir + "/evalutaion"
+    
+    evaluator = DatasetEvaluator(model_dir, data_dir, out_dir)
+    evaluator.run()
+
+
+
 if __name__ == "__main__":
     
-    test_train("BNN")
-    test_train("PNN")
+    # test_train("BNN")
+    # test_train("PNN")
 
-    test_load("Logs/BNN_sine_test")
-    test_load("Logs/PNN_sine_test")
+    # test_load("Logs/BNN_sine_test")
+    # test_load("Logs/PNN_sine_test")
+
+    test_evaulator("Logs/BNN_sine_test")
 
     '''
     idx_list: 

@@ -27,7 +27,6 @@ class BNN(Ensemble):
         num_layers: int = 4,
         ensemble_size: int = 1,
         hid_size: int = 200,
-        deterministic: bool = True,
         freeze: bool = False,
         propagation_method: Optional[str] = None,
         activation_fn_cfg: Optional[Union[Dict, omegaconf.DictConfig]] = None,
@@ -35,7 +34,7 @@ class BNN(Ensemble):
         prior_pi: float = 0.8
     ):
         super().__init__(
-            ensemble_size, device, propagation_method, deterministic=deterministic
+            ensemble_size, device, propagation_method, deterministic=True
         )
 
         self.in_size = in_size
