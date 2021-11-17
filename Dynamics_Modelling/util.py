@@ -121,7 +121,7 @@ def load_model(load_dir):
 
     return wrapper
 
-def MC_mean_var(model, x, num_samples = 100):
+def monte_carlo_mean_var(model, x, num_samples = 100):
         """
         Computes mean and variance of stoachastic model prediction
         through monte carlo sampling

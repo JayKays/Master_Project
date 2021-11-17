@@ -8,7 +8,7 @@ from Modelling.Models.BNN import BNN
 from configs.model_config import model_cfg
 from configs.train_config import train_cfg
 
-from util import labeled_data, model_from_cfg, train_data_from_array, create_test_data, load_model, MC_mean_var
+from util import labeled_data, model_from_cfg, train_data_from_array, create_test_data, load_model, monte_carlo_mean_var
 from Modelling.train import  train
 
 import matplotlib.pyplot as plt
@@ -48,7 +48,7 @@ def test_sine_model(model_wrapper):
 
     with torch.no_grad():
         if isinstance(model, BNN):
-            y_pred, y_pred_var = MC_mean_var(model, x_tensor)
+            y_pred, y_pred_var = monte_carlo_mean_var(model, x_tensor)
             y_pred = y_pred[..., 0]
             y_pred_var = y_pred_var[..., 0]
             y_var = y_pred_var
