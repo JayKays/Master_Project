@@ -8,7 +8,6 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 from mbrl.models.model import Ensemble
-from blitz.modules.base_bayesian_module import BayesianModule
 from .bayesianEnsembleLayer import BayesianLinearEnsembleLayer
 
 
@@ -222,7 +221,7 @@ class BNN(Ensemble):
         kl_divergence = 0
 
         for module in self.modules():
-            if isinstance(module, (BayesianModule)):
+            if isinstance(module, (BayesianLinearEnsembleLayer)):
                 kl_divergence += module.log_variational_posterior - module.log_prior
 
         return kl_divergence
@@ -274,10 +273,12 @@ class BNN(Ensemble):
         Returns:
             (tensor): a tensor with the squared error per output dimension, batched over model.
         """
+        self.freeze_model()
         assert model_in.ndim == 2 and target.ndim == 2
         with torch.no_grad():
             pred = self.forward(model_in, use_propagation=False)
             target = target.repeat((self.num_members, 1, 1))
+            self.unfreeze_model()
             return F.mse_loss(pred, target, reduction="none"), {}
 
     def sample_propagation_indices(
@@ -303,7 +304,7 @@ class BNN(Ensemble):
         Freezes the model by making predictions only using the expected values of the weight distributions
         """
         for module in self.modules():
-            if isinstance(module, (BayesianModule)):
+            if isinstance(module, (BayesianLinearEnsembleLayer)):
                 module.freeze = True
 
         self.freeze = True
@@ -313,7 +314,7 @@ class BNN(Ensemble):
         Unfreezes the model by letting it draw its weights with uncertanity from their correspondent distributions
         """
         for module in self.modules():
-            if isinstance(module, (BayesianModule)):
+            if isinstance(module, (BayesianLinearEnsembleLayer)):
                 module.freeze = False
 
         self.freeze = False

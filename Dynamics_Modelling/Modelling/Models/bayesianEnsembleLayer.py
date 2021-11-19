@@ -4,18 +4,18 @@ from torch import nn
 from .weightSampling import TrainableRandomDistribution, PriorWeightDistribution
 
 
-class BayesianModule(nn.Module):
-    '''
-    Base Bayesian class to enable methods like .freeze()
-    '''
-    def __init__(self):
-        super().__init__()
+# class BayesianModule(nn.Module):
+#     '''
+#     Base Bayesian class to enable methods like .freeze()
+#     '''
+#     def __init__(self):
+#         super().__init__()
 
 
 #The following class is the BayesianLinearLayer class from blitz, but adapted to be used as a layer in a network ensemble:
 #https://github.com/piEsposito/blitz-bayesian-deep-learning/blob/master/blitz/modules/linear_bayesian_layer.py
 
-class BayesianLinearEnsembleLayer(BayesianModule):
+class BayesianLinearEnsembleLayer(nn.Module):
     """
     Bayesian Linear Ensemble layer, implements a linear layer as proposed in the Bayes by Backprop paper, which is
     also capable of acting as an efficient linear layer in a bayesian network ensemble.
@@ -118,9 +118,9 @@ class BayesianLinearEnsembleLayer(BayesianModule):
         Equivalent to a deterministic linear forward pass
         """
         if self.bias:
-            return x.matmul(self.weight_mu) + self.bias_mu
+            return x.matmul(self.weight_sampler.mu) + self.bias_sampler.mu
         else:
-            return x.matmul(self.weight_mu)
+            return x.matmul(self.weight_sampler.mu)
 
 
 
