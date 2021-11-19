@@ -20,9 +20,13 @@ def test_train(model_type):
     train_data = labeled_data(x_train, y_train)
     model_cfg.input_size = train_data["x"].shape[1]
     model_cfg.output_size = train_data["y"].shape[1]
+    if model_type == "BNN":
+        train_cfg.normalize = False
+    train_cfg.target_is_delta = False
 
     print("Input: ",model_cfg.input_size)
     print("Output: ", model_cfg.output_size)
+
 
     model = model_from_cfg(model_cfg, model_type)
     log_dir = f"Logs/{model_type}_sine_test"
@@ -38,7 +42,7 @@ def test_sine_model(model_wrapper):
     num_points = 10000
     x_data = np.linspace(-12, 12, num_points)
     y_data = np.sin(x_data)
-
+    
     x_tensor = torch.from_numpy(x_data).unsqueeze(1).float().to(model_wrapper.device)
     try:
         x_tensor = model_wrapper.input_normalizer.normalize(x_tensor)
@@ -92,14 +96,14 @@ def test_evaulator(model_dir, data_dir= None, out_dir = None):
 
 
 if __name__ == "__main__":
-    
+    # from Modelling.Models.bayesianEnsembleLayer import BayesianLinearEnsembleLayer
+    test_train("PNN")
+    test_load("Logs/PNN_sine_test")
+    test_evaulator("Logs/PNN_sine_test")
+
     # test_train("BNN")
-    # test_train("PNN")
-
     # test_load("Logs/BNN_sine_test")
-    # test_load("Logs/PNN_sine_test")
-
-    test_evaulator("Logs/BNN_sine_test")
+    # test_evaulator("Logs/BNN_sine_test")
 
     '''
     idx_list: 

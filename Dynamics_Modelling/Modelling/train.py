@@ -25,15 +25,18 @@ def train(model, train_data, train_cfg, model_cfg, log_dir = None):
     """
     labeled = ("x" in train_data and "y" in train_data)
 
+
     if labeled:
         assert model.in_size == train_data["x"].shape[1], "Input data size does not match model input size"
         assert model.out_size == train_data["y"].shape[1], "Labels size does not match model output size"
         train_cfg.target_is_delta = False
     else:
         assert "obs" in train_data and "act" in train_data, "Using unlabeled data requires both observations and actions"
-        assert model.in_size == (train_data["obs"].shape[1] + train_data["act"].shape[1]), "Model input size does not match train_data"
         assert model.out_size == train_data["obs"].shape[1], "Model output size does not match observation size of train_data"
-
+        if not train_cfg.autonomus:
+            assert model.in_size == (train_data["obs"].shape[1] + train_data["act"].shape[1]), "Model input size does not match train_data"
+        else:
+            assert model.in_size == train_data["obs"].shape[1], "Model input size does not match train_data"
 
     if log_dir is not None and not os.path.isdir(log_dir):
         os.makedirs(log_dir)

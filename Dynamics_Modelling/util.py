@@ -1,5 +1,5 @@
 
-from mbrl.models import one_dim_tr_model
+
 import numpy as np
 import torch
 from omegaconf.omegaconf import OmegaConf
@@ -10,6 +10,20 @@ from mbrl.models.one_dim_tr_model import OneDTransitionRewardModel
 
 #TODO: Change model cfg setup to use mbrl cfg structure for utility function support
 
+
+def make_model_and_train_data(model_cfg, data_arr, obs_idx, act_idx = None, use_act = False):
+
+    train_data = train_data_from_array(data_arr, obs_idx, act_idx, use_act=use_act)
+
+    if use_act:
+        model_cfg.input_size = train_data["obs"].shape[1] + train_data["act"].shape[1]
+    else:
+        model_cfg.input_size = train_data["obs"].shape[1]
+    model_cfg.output_size = train_data["obs"].shape[1]
+
+    model = model_from_cfg(model_cfg)
+
+    return model, train_data, model_cfg
 
 def train_data_from_array(data_arr, obs_idx = None, act_idx = None, use_act = False):
 

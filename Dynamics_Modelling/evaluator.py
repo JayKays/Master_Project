@@ -17,7 +17,7 @@ from util import load_model
 
 
 '''
-This is the mbrl DatasetEvaluator class,
+This is the mbrl DatasetEvaluator class: https://github.com/facebookresearch/mbrl-lib/blob/main/mbrl/diagnostics/eval_model_on_dataset.py
 just slightly modified to load data and models in our format
 '''
 
@@ -28,6 +28,10 @@ class DatasetEvaluator:
         pathlib.Path.mkdir(self.output_path, parents=True, exist_ok=True)
     
         self.dynamics_model = load_model(model_dir)
+
+        if hasattr(self.dynamics_model.model, "freeze_model"):
+            print("Frozen BNN")
+            self.dynamics_model.model.freeze_model()
 
         data = np.load(dataset_dir + "/replay_buffer.npz")
 
@@ -48,15 +52,17 @@ class DatasetEvaluator:
                 outputs,
                 target,
             ) = self.dynamics_model.get_output_and_targets(batch)
+            
+            if isinstance(outputs, tuple):
+                all_means.append(outputs[0].cpu().numpy())
+            else:
+                all_means.append(outputs.cpu().numpy())
 
-            all_means.append(outputs.cpu().numpy())
             all_targets.append(target.cpu().numpy())
             
         # Consolidating targets and predictions
         all_means_np = np.concatenate(all_means, axis=-2)
         targets_np = np.concatenate(all_targets, axis=0)
-        print(targets_np.shape)
-        print(all_means_np.shape)
 
         if all_means_np.ndim == 2:
             all_means_np = all_means_np[np.newaxis, :]
@@ -82,13 +88,17 @@ class DatasetEvaluator:
                 mean_of_means[mean_sort_idx],
                 color="r",
                 linewidth=0.5,
+                label = "Ensemble prediction"
             )
+           
             plt.plot(
-                [target.min(), target.max()],
-                [target.min(), target.max()],
+                target,
+                target,
                 linewidth=2,
                 color="k",
+                label = "Target"
             )
+            plt.legend()
             plt.xlabel("Target")
             plt.ylabel("Prediction")
             fname = self.output_path / f"pred_dim{dim}.png"
