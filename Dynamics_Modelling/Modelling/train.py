@@ -5,10 +5,12 @@ from mbrl.models.one_dim_tr_model import OneDTransitionRewardModel
 from mbrl.util.logger import Logger
 from mbrl.util.replay_buffer import ReplayBuffer
 from mbrl.models.gaussian_mlp import GaussianMLP
+from numpy import log
 from omegaconf import OmegaConf
 
 import mbrl.util.common as common_util
 import os
+import numpy as np
 from .Models.BNN import BNN
 
 def train(model, train_data, train_cfg, model_cfg, log_dir = None):
@@ -80,8 +82,10 @@ def train(model, train_data, train_cfg, model_cfg, log_dir = None):
             model_cfg.type = "BNN"
         else:
             model_cfg.type = "PNN"
+        
     OmegaConf.save(model_cfg, log_dir + "/model_cfg")
     OmegaConf.save(train_cfg, log_dir + "/train_cfg")
+    train_buffer.save(log_dir)
 
     #Train and save trained model
     common_util.train_model_and_save_model_and_data(
@@ -92,4 +96,75 @@ def train(model, train_data, train_cfg, model_cfg, log_dir = None):
         work_dir = log_dir,
         callback = None
     )
+
+def train_from_buffer(model, train_buffer, train_cfg, model_cfg, log_dir = None):
+
+    """
+    Trains a using the given data in train_buffer
+
+    args:
+        model: Pytorch model to train
+        train_data (replayBuffer): replayBuffer of training data (will be split in train/val) 
+        train_cfg (Omegaconf): config for training parameters
+        model_cfg (OmegaConf): config for the model (saved to help with loading)
+        log_dir: directory to log training and save the trained model
+    """
+
+    if log_dir is not None and not os.path.isdir(log_dir):
+        os.makedirs(log_dir)
+        print("Created log dir: ", log_dir)
+
+
+    if train_cfg.should_log and log_dir is not None:
+        logger = Logger(log_dir)
+    else:
+        logger = None
+    
+    wrapper = OneDTransitionRewardModel(model,
+         target_is_delta = train_cfg.target_is_delta, normalize=train_cfg.normalize, learned_rewards=False)
+    
+    trainer = ModelTrainer(wrapper, optim_lr=train_cfg.lr, weight_decay=train_cfg.weight_decay, logger=logger)
+
+    #Save model config for loading
+    if OmegaConf.is_missing(model_cfg, "type"):
+        if isinstance(model, BNN):
+            model_cfg.type = "BNN"
+        else:
+            model_cfg.type = "PNN"
+        
+    OmegaConf.save(model_cfg, log_dir + "/model_cfg")
+    OmegaConf.save(train_cfg, log_dir + "/train_cfg")
+    # train_buffer.save(log_dir)
+
+    #Train and save trained model
+    # common_util.train_model_and_save_model_and_data(
+    #     model = wrapper,
+    #     model_trainer = trainer,
+    #     cfg = train_cfg,
+    #     replay_buffer = train_buffer,
+    #     work_dir = log_dir,
+    #     callback = None
+    # )
+
+    dataset_train, dataset_val = common_util.get_basic_buffer_iterators(
+        train_buffer,
+        train_cfg.model_batch_size,
+        train_cfg.validation_ratio,
+        ensemble_size=len(model),
+        shuffle_each_epoch=True,
+    )
+    if hasattr(model, "update_normalizer"):
+        model.update_normalizer(train_buffer.get_all())
+
+    train_loss, val_score = trainer.train(
+                            dataset_train,
+                            dataset_val=dataset_val,
+                            num_epochs=train_cfg.get("num_epochs_train_model", None),
+                            patience=train_cfg.get("patience", 1),
+                            improvement_threshold=train_cfg.get("improvement_threshold", 0.01),
+                            callback=None,
+                        )
+    np.savez(log_dir + "/train_data.npz", train_loss = train_loss, val_score = val_score)
+    wrapper.save(log_dir)
+    return wrapper
 

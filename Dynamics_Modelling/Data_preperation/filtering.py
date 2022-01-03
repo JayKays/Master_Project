@@ -1,7 +1,7 @@
 
 
 import numpy as np
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, medfilt
 from scipy.fft import fft, ifft, fftfreq, fftshift, ifftshift
 
 
@@ -18,14 +18,15 @@ def lowpass_butter(data, fs = 100, cutoff = 6, idx = None):
     returns:
         filtered version of data array
     '''
-
+    filtered_data = data.copy()
     if idx is None:
-        idx = [i for i in range(1,data.shape[1])]
+        # idx = [i for i in range(1,data.shape[1])]
+        idx = np.arange(data.shape[1])
 
     B, A = butter(2, cutoff / (fs / 2), btype='low') # 1st order Butterworth low-pass
-    data[:, idx] = lfilter(B, A, data[:,idx], axis=0)
+    filtered_data[:, idx] = lfilter(B, A, data[:,idx], axis=0)
 
-    return data
+    return filtered_data
 
 
 def lowpass_fft(data, fs = 100, cutoff = 6, idx = None):
@@ -42,7 +43,7 @@ def lowpass_fft(data, fs = 100, cutoff = 6, idx = None):
     '''
 
     if idx is None:
-        idx = [i for i in range(1,data.shape[1])]
+        idx = [i for i in range(data.shape[1])]
 
     #Compute fft of data
     data_fft = fft(data[:,idx], axis = 0)
@@ -60,3 +61,19 @@ def lowpass_fft(data, fs = 100, cutoff = 6, idx = None):
     data[:,idx] = filtered_data
     
     return data 
+
+def median_filter(data, window_size = 3):
+    '''
+    Performs a running median filtering of the input data array along each time axis
+    '''
+
+    filtered_data = medfilt(data.copy(), kernel_size=(window_size,1))
+
+    return filtered_data
+
+def filter_med_lowpass(data, cutoff = 4, fs = 100, window = 5):
+
+    med_data = median_filter(data,window_size=window)
+    lp_data = lowpass_butter(med_data, fs = fs, cutoff=cutoff)
+
+    return lp_data

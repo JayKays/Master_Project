@@ -14,7 +14,7 @@ from .bayesianEnsembleLayer import BayesianLinearEnsembleLayer
 class BNN(Ensemble):
     """
     Implements a linear Bayesian Ensemble
-    A lot of the functionality is re-purposed from the GaussianMLP in mbrl-lib:
+    Som of the functionality is re-purposed from the GaussianMLP in mbrl-lib:
     https://github.com/facebookresearch/mbrl-lib/blob/main/mbrl/models/gaussian_mlp.py
     """
 
@@ -29,7 +29,7 @@ class BNN(Ensemble):
         freeze: bool = False,
         propagation_method: Optional[str] = None,
         activation_fn_cfg: Optional[Union[Dict, omegaconf.DictConfig]] = None,
-        prior_sigma: Tuple = (0.5, 0.01),
+        prior_sigma: Tuple = (1, 0.1),
         prior_pi: float = 0.8
     ):
         super().__init__(
@@ -52,7 +52,14 @@ class BNN(Ensemble):
             return activation_func
 
         def create_linear_layer(l_in, l_out):
-            return BayesianLinearEnsembleLayer(ensemble_size, l_in, l_out,prior_pi=self.prior_pi, prior_sigma_1=self.prior_sigma1, prior_sigma_2=self.prior_sigma2)
+            return BayesianLinearEnsembleLayer(
+                                ensemble_size, 
+                                l_in, 
+                                l_out,
+                                prior_pi=self.prior_pi, 
+                                prior_sigma_1=self.prior_sigma1, 
+                                prior_sigma_2=self.prior_sigma2
+                            )
 
         hidden_layers = [
             nn.Sequential(create_linear_layer(in_size, hid_size), create_activation())
@@ -70,10 +77,15 @@ class BNN(Ensemble):
 
         self.freeze = freeze
         if self.freeze: self.freeze_model()
+        
+        #Num_batches must be updated externally before training to use KL reweighting for Mini-Batch Optimization
+        self.num_batches = None
+        self.batch_idx  = 0
 
         self.to(self.device)
         
-        self.elite_models: List[int] = None
+
+        self.elite_models: List[int] = None #Currently not supperted by Linear Layer
 
 
     def _maybe_toggle_layers_use_only_elite(self, only_elite: bool):
@@ -180,6 +192,12 @@ class BNN(Ensemble):
         pred_mean = self.forward(model_in, use_propagation=False)
         return F.mse_loss(pred_mean, target, reduction="none").sum((1, 2)).sum()
 
+    def _nll_loss(self, model_in: torch.Tensor, target: torch.Tensor):
+        assert model_in.ndim == target.ndim
+        
+        pred_mean = self.forward(model_in, use_propagation=False)
+        return F.nll_loss(pred_mean, target, reduction="none").sum((1, 2)).sum()
+
     def loss(
         self,
         model_in: torch.Tensor,
@@ -226,9 +244,29 @@ class BNN(Ensemble):
 
         return kl_divergence
 
+    def get_complexity_cos(self):
+        '''
+        Calculates the complexity cost for the current minibatch,
+        if num_batches is set before training.
+        '''
+        if self.num_batches is None:
+            return 1
+        else:
+            return 2**(self.num_batches - self.batch_idx)/(2**self.num_batches -1)
+
+    def gaussian_nll(self, pred_mean, pred_var, targets):
+        '''
+        Computes the guassian nll of predictions
+        '''
+        l2 = F.mse_loss(pred_mean, targets)
+        inv_var = 1/(pred_var + 1e-12)
+        loss = l2 * inv_var + torch.log(pred_var)
+
+        return loss.sum(dim = 1).mean()
+
     def sample_elbo(self,
                     inputs,
-                    labels,
+                    targets,
                     sample_nbr = 5,
                     complexity_cost_weight=1):
 
@@ -240,8 +278,8 @@ class BNN(Ensemble):
                 As we are using variational inference, it takes several (quantified by the parameter sample_nbr) Monte-Carlo
                  samples of the weights in order to gather a better approximation for the loss.
             Parameters:
-                inputs: torch.tensor -> the input data to the model
-                labels: torch.tensor -> label data for the performance-part of the loss calculation
+                inputs(torch.tensor) -> the input data to the model
+                labels(torch.tensor) -> label data for the performance-part of the loss calculation
                         The shape of the labels must match the label-parameter shape of the criterion (one hot encoded or as index, if needed)
                 sample_nbr: int -> The number of times of the weight-sampling and predictions done in our Monte-Carlo approach to
                             gather the loss to be .backwarded in the optimization of the model.
@@ -249,13 +287,19 @@ class BNN(Ensemble):
                 (tensor): Estimated ELBO loss for the model
         """
 
-        loss = 0
-    
-        for _ in range(sample_nbr):
-            loss += self._mse_loss(inputs, labels)
-            loss += self.nn_kl_divergence() * complexity_cost_weight
+        if self.num_batches is not None:
+            complexity_cost_weight = self.get_complexity_cos()
+            self.batch_idx += 1
+            self.batch_idx = self.batch_idx % self.num_batches
 
-        return loss / sample_nbr
+        
+        loss = 0
+        for i in range(sample_nbr):
+            loss += self._mse_loss(inputs, targets)
+            loss += self.nn_kl_divergence() * complexity_cost_weight
+        loss/= sample_nbr
+
+        return loss
     
     def eval_score(  # type: ignore
         self, model_in: torch.Tensor, target: Optional[torch.Tensor] = None
@@ -273,9 +317,9 @@ class BNN(Ensemble):
         Returns:
             (tensor): a tensor with the squared error per output dimension, batched over model.
         """
-        self.freeze_model()
         assert model_in.ndim == 2 and target.ndim == 2
         with torch.no_grad():
+            self.freeze_model()
             pred = self.forward(model_in, use_propagation=False)
             target = target.repeat((self.num_members, 1, 1))
             self.unfreeze_model()
@@ -289,13 +333,16 @@ class BNN(Ensemble):
         )
         if batch_size % model_len != 0:
             raise ValueError(
-                f"To use GaussianMLP's ensemble propagation, the batch size [{batch_size}] must "
+                f"To use ensemble propagation, the batch size [{batch_size}] must "
                 f"be a multiple of the number of models [{model_len}] in the ensemble."
             )
         # rng causes segmentation fault, see https://github.com/pytorch/pytorch/issues/44714
         return torch.randperm(batch_size, device=self.device)
 
     def set_elite(self, elite_indices: Sequence[int]):
+        #Elite models not supported by bayesian linear layer currently, 
+        #So this will allways keep elite_models = None
+        if self.elite_models is None: return
         if len(elite_indices) != self.num_members:
             self.elite_models = list(elite_indices)
 
@@ -318,7 +365,7 @@ class BNN(Ensemble):
                 module.freeze = False
 
         self.freeze = False
-    
+
     def save(self, save_dir: Union[str, pathlib.Path]):
         """Saves the model to the given directory."""
         model_dict = {
@@ -331,5 +378,5 @@ class BNN(Ensemble):
         """Loads the model from the given path."""
         model_dict = torch.load(pathlib.Path(load_dir) / self._MODEL_FNAME)
         self.load_state_dict(model_dict["state_dict"])
-        self.elite_models = model_dict["elite_models"]
-
+        # self.elite_models = model_dict["elite_models"]
+        self.elite_models = None

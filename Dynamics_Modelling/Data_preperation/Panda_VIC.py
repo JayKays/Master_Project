@@ -93,14 +93,25 @@ class VIC_Env(gym.Env):
 
         self.lam = np.zeros(18)
         # set desired pose/force trajectory
-        self.f_d = func.generate_Fd_steep(self.max_num_it, cfg.Fd,cfg.T)
-        self.f_d[2, :] = cfg.Fd
-        print(self.f_d)
+        # self.f_d = func.generate_Fd_steep(self.max_num_it, cfg.Fd,cfg.T)
+        self.f_d = func.generate_Fd_wave(self.max_num_it, cfg.Fd)
+        # self.f_d[2, :] = cfg.Fd
+        plt.plot(np.arange(self.f_d.shape[1])/100, self.f_d[2,:])
+        plt.title("Desired Force",fontsize = 14)
+        plt.xlabel("Time [s]",fontsize = 12)
+        plt.ylabel("Force [N]",fontsize = 12)
+        plt.savefig("figures_for_report/F_d.eps", format = "eps")
+        plt.show()
+        # print(self.f_d)
         self.Rot_d = self.robot.endpoint_pose()['orientation_R']
         self.goal_ori = np.asarray(self.robot.endpoint_pose()['orientation']) # goal orientation = current (initial) orientation [remains the same the entire duration of the run]
         #self.goal_ori = self.robot.endpoint_pose()['orientation']
         self.x_d_ddot, self.x_d_dot, self.p_d = func.generate_desired_trajectory_tc(self.robot, self.max_num_it, cfg.T,move_in_x=True)
-        plt.plot(self.p_d[0,:])
+        plt.plot(np.arange(self.p_d.shape[1])/100, self.p_d[0,:])
+        plt.title("Desired x-position", fontsize = 14)
+        plt.xlabel("Time [s]",fontsize = 12)
+        plt.ylabel("x-position",fontsize = 12)
+        plt.savefig("figures_for_report/x_d.eps", format = "eps")
         plt.show()
         sleep(5)
         print(self.x_d_ddot)
@@ -127,6 +138,9 @@ class VIC_Env(gym.Env):
 
         # array with data meant for plotting
         self.data_for_plotting = np.zeros((17, self.max_num_it))
+
+        self.h_c = None
+        self.torques = None
 
     def move_to_start(self, alternative_position, sim):
         if sim:
@@ -283,6 +297,14 @@ class VIC_Env(gym.Env):
         torque = np.linalg.multi_dot([jacobian.T, self.get_W(jacobian, robot_inertia, inv=True), alpha]).\
                                     reshape((7, 1)) + np.array(self.robot.coriolis_comp().reshape((7, 1))) \
                                                                 + np.dot(jacobian.T, F_ext_2D).reshape((7, 1))
+        #tau = J.T * h_c
+        # print(jacobian.shape)
+        # print(torque.shape)
+
+        self.h_c, _, _, _ = np.linalg.lstsq(jacobian.T, torque)
+        self.torques = torque
+        # print(self.h_c.shape)
+
         self.robot.set_joint_torques(dict(list(zip(joint_names, torque))))
 
     def step(self, action):
@@ -357,9 +379,9 @@ class VIC_Env(gym.Env):
                         self.state_dict["x"]-self.p_d[0, self.iteration], self.state_dict["y"]-self.p_d[1, self.iteration]])
         # Gym-related..
         reward = 0
-        print(self.iteration, action,[self.K[2, 2], self.B[2, 2]], [K_hat[2, 2], B_hat[2, 2]], self.p_z_init, self.f_d[2, self.iteration],
-              self.state[0])
-
+        # print(self.iteration, action,[self.K[2, 2], self.B[2, 2]], [K_hat[2, 2], B_hat[2, 2]], self.p_z_init, self.f_d[2, self.iteration],
+        #       self.state[0])
+        print(f"Gammas: B: {self.gamma_B_hist[self.iteration]}, K: {self.gamma_K_hist[self.iteration]}")
         if (self.iteration >= self.max_num_it) or (np.abs(self.state[1]) > 0.05) or (np.abs(self.state[3]) > 0.02) or \
             (np.abs(self.state[4]) > 0.05) or (np.abs(self.f_d[2, self.iteration]-self.state[0]) > 10) or (self.state[0] < 0.5):
             done = True#(self.iteration >= self.max_num_it)
@@ -367,6 +389,8 @@ class VIC_Env(gym.Env):
                   np.abs(self.state[4]))
             self.update_data_for_plotting()
             placeholder = self.data_for_plotting
+        if (self.iteration >= self.max_num_it-1):
+            done = True
         else:
             done = False
             placeholder = None
@@ -476,7 +500,14 @@ class VIC_Env(gym.Env):
         self.data_for_plotting[16, :] = self.Kp_pos_hist  # stiffness in x and y over time
 
     def set_fd_constant(self, force):
+        
         self.f_d = force
+
+    def get_wrench(self):
+        return self.h_c
+    
+    def get_torque(self):
+        return self.torques
 
 class Normalised_VIC_Env():
     def __init__(self, env_id, m, std):
@@ -518,22 +549,22 @@ if __name__ == "__main__":
     #print(joint_names)
     env = VIC_Env()
     publish_rate = 100
-    max_num_it = 15 * publish_rate
+    max_num_it = cfg.duration * publish_rate
     env.set_not_learning()
 
-    num_trials = 20
+    num_trials = 1
     forces = np.zeros(num_trials)
     for n in range(num_trials):
         env.reset()
         state_data = np.zeros((max_num_it,16))
-        fd = func.generate_Fd_random(env.max_num_it, cfg.Fd, cfg.T, slope_prob = 0, Fmin = 3, Fmax = 10)
-        env.set_fd_constant(fd)
-        forces[n] = fd[2,0]
+        # fd = func.generate_Fd_random(env.max_num_it, cfg.Fd, cfg.T, slope_prob = 0, Fmin = 3, Fmax = 10)
+        # env.set_fd_constant(cfg.Fd)
+        # forces[n] = fd[2,0]
         r = rospy.Rate(publish_rate)
         for i in range(max_num_it):
             start = time.time()
-            # action = np.array([0.0001*10 , 0.0001/10 ])
-            action = np.random.uniform(cfg.GAMMA_B_LOWER, cfg.GAMMA_B_UPPER, 2)
+            action = np.array([0.0001*10 , 0.0001/10 ])
+            # action = np.random.uniform(cfg.GAMMA_B_LOWER, cfg.GAMMA_B_UPPER, 2)
             env.step(action)
             timestep = time.time() - start
 

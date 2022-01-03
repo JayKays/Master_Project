@@ -100,8 +100,8 @@ def generate_desired_trajectory_tc(robot, max_num_it,T,move_in_x=False, move_dow
 
 
     if move_in_x:
-        a[0,int(max_num_it*3/10):int(max_num_it*4/10)]=0.01
-        a[0,int(max_num_it*7/10):int(max_num_it*8/10)]=-0.01
+        a[0,int(max_num_it*2/10):int(max_num_it*4/10)]=0.005
+        a[0,int(max_num_it*7/10):int(max_num_it*9/10)]=-0.005
 
     for i in range(max_num_it):
         if i>0:
@@ -152,7 +152,7 @@ def generate_Fd_random(max_num_it, Fd, T, slope_prob = 0.7, Fmin = 3, Fmax = 7):
     return s    
 
 # Generate a constant desired force [STABLE]
-def generate_Fd_constant(max_num_it,Fd, random_force = False, Fmin = 3, Fmax = 7):
+def generate_Fd_constant(max_num_it, Fd, random_force = False, Fmin = 3, Fmax = 7):
     s = np.zeros((6,max_num_it)) 
     
     if random_force:
@@ -161,6 +161,16 @@ def generate_Fd_constant(max_num_it,Fd, random_force = False, Fmin = 3, Fmax = 7
         s[2,:] = Fd
     return s
 
+def generate_Fd_wave(max_num_it, Fd):
+    s = np.zeros((6,max_num_it))
+
+    x = np.linspace(0,2*np.pi, max_num_it-100)
+
+    s[2,:100] = Fd
+
+    s[2,100:] = Fd + 2*np.sin(x)
+
+    return s
 # ------------ Helper functions --------------------------------
 """
 # Compute difference between quaternions and return Euler angles as difference

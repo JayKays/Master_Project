@@ -1,12 +1,15 @@
 
 from matplotlib import pyplot as plt
+import numpy as np
 
 
+# STATES = ["time", "Force-x", "Force-y", "Force-z", \
+#     "Torque-x", "Torque-y", "Torque-z", "Pos-x", "Pos-y", \
+#         "Pos-z", "Vel-x", "Vel-y", "Vel-z", "Angular-x", "Angular-y", "Angular-z"]
 
-STATES = ["time", "Force-x", "Force-y", "Force-z", \
+STATES = ["Force-x", "Force-y", "Force-z", \
     "Torque-x", "Torque-y", "Torque-z", "Pos-x", "Pos-y", \
         "Pos-z", "Vel-x", "Vel-y", "Vel-z", "Angular-x", "Angular-y", "Angular-z"]
-
 def plot_data(data_arr, idx):
     plt.figure()
     plt.plot(data_arr[:,idx])
@@ -78,7 +81,7 @@ def plot_filter_comp(data_arr, filtered_data, idx, f_idx = None):
     plt.figure()
 
     for n in range(num_plots):
-        plt.subplot(1, num_plots, n+1)
+        plt.subplot(num_plots, 1, n+1)
         plt.plot(data_arr[:,idx[n]])
         if idx[n] in f_idx:
             plt.plot(filtered_data[:,idx[n]])
@@ -89,19 +92,37 @@ def plot_states(data_arr, idx):
 
     num_plots = len(idx)
 
-    plt.figure()
-
+    # plt.figure()
+    x = np.arange(data_arr.shape[0])/100
     for n in range(num_plots):
-        plt.subplot(1, num_plots, n+1)
-        plt.plot(data_arr[:,idx[n]])
+        plt.subplot(num_plots,1, n+1)
+        plt.plot(x,data_arr[:,idx[n]])
         plt.title(STATES[idx[n]])
 
-    plt.legend(["data", "filtered"])
+    # plt.legend(["data", "filtered"])
 
 
 if __name__ == "__main__":
     import numpy as np
     from filtering import lowpass_fft, lowpass_butter
+
+    data_arr = np.load("Old_data/timestep_test2/timesteps.npy")
+
+    print(np.median(data_arr))
+    plt.figure(figsize=(10,5))
+    plt.subplot(121)
+    plt.plot(0.65 * data_arr[1:])
+    plt.xlabel("Time step")
+    plt.ylabel("Step duration [s]")
+    plt.title("Time step lengths")
+    plt.subplot(122)
+    plt.hist(0.65*data_arr[1:])
+    plt.title("Time step length distribution")
+    plt.ylabel("Time step count")
+    plt.xlabel("Step duration [s]")
+    # plot_filter_comp(data_arr[:,:], lowpass_butter(data_arr.copy(), fs = 100, cutoff = 4, idx = [3, 9, 12])[:,:], idx=[3,9,12], f_idx=[3,9,12])
+    plt.savefig("figures_for_report/timesteps.eps", format="eps")
+    plt.show()
 
     '''
     idx_list: 

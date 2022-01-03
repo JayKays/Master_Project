@@ -11,11 +11,10 @@ model_cfg_dict = {
     'input_size': '???',
     'output_size': '???', 
     'device': 'cuda:0' if torch.cuda.is_available() else 'cpu',
-    'num_layers': 3,
     'propagation_method': None,
-    # 'activation_fn_cfg' : {"_target_": "torch.nn.LeakyReLU", 'negative_slope': 0.01},
     'activation_fn_cfg': {"_target_": "torch.nn.SiLU"},
-    'hid_size': 150,
+    'num_layers': 5,
+    'hid_size': 512,
     'ensemble_size': 5,
     #BNN spesific parameters
     'BNN': {
@@ -29,5 +28,6 @@ model_cfg_dict = {
         'deterministic': False
     }   
 }
+
 model_cfg = OmegaConf.create(model_cfg_dict)
 print(f"Model config device: {model_cfg.device}")

@@ -14,7 +14,7 @@ NOISE_FRACTION = 0.015 #standard deviation of the noise is now 1.5 % of the forc
 #Force limits for varying desired force
 Fmin = 3
 Fmax = 7
-Fd = (Fmax - Fmin)/2
+Fd = (Fmin + Fmax)/2
 
 PUBLISH_RATE = 100
 duration = 15
@@ -23,10 +23,10 @@ z_min = 0.582
 
 
 #ACTION SPACE  RANDOM VALUES
-GAMMA_B_LOWER = 1.e-7#0.0001#10**(-3)
-GAMMA_B_UPPER = 1.e-7#0.01#10**(-1)
+GAMMA_B_LOWER = 1.e-4#0.0001#10**(-3)
+GAMMA_B_UPPER = 0.001#0.01#10**(-1)
 
-GAMMA_K_LOWER = 0.01#0.000001#10**(-4)
+GAMMA_K_LOWER = 1.e-7#0.000001#10**(-4)
 GAMMA_K_UPPER = 0.01#0.0001#10**(-2)
 
 KP_POS_LOWER = 500

@@ -1,12 +1,14 @@
 
 
+from mbrl.util.replay_buffer import ReplayBuffer
 import numpy as np
 import torch
 from omegaconf.omegaconf import OmegaConf
+# from torch._C import int32
 from Modelling.Models.BNN import BNN
 from mbrl.models.gaussian_mlp import GaussianMLP
 from mbrl.models.one_dim_tr_model import OneDTransitionRewardModel
-
+from Data_preperation.filtering import filter_med_lowpass
 
 #TODO: Change model cfg setup to use mbrl cfg structure for utility function support
 
@@ -187,4 +189,129 @@ def create_test_data(train_size = 2000):
     indeces = np.random.choice(train_size*2, train_size*2, replace=False)
 
     return x_data, y_data, x_train[indeces,:], y_train[indeces,:]
+
+def load_buffer(load_dir):
+
+    data = np.load(load_dir + "/replay_buffer.npz")
+
+    traj_idx = data["trajectory_indices"]
+    if len(traj_idx) > 0:
+        traj_length = traj_idx[0,1] - traj_idx[0,0]
+    else:
+        traj_length = None
+
+    dataset_size = data["obs"].shape[0]
+    obs_shape = (data["obs"].shape[1],)
+    act_shape = (data["action"].shape[1],)
+
+
+    train_buffer = ReplayBuffer(
+        capacity=dataset_size,
+        obs_shape=obs_shape,
+        action_shape=act_shape,
+        max_trajectory_length= traj_length
+    )
+
+    train_buffer.load(load_dir)
+
+    return train_buffer
+
+def load_rewrite_buffer(load_dir, save_dir, state_idx = None, act_idx = None, states_as_act = False, traj_clip = 100, filter = True, cut_first_last_traj = True):
+    data = np.load(load_dir + "/replay_buffer.npz")
+
+    traj_idx = data["trajectory_indices"]
+    if len(traj_idx) > 0:
+        traj_length = traj_idx[0,1] - traj_idx[0,0]
+    else:
+        traj_length = None
+        
+    data_idx = cut_off_traj_starts_idx(data["obs"].shape[0], cutoff_length=traj_clip, traj_length = traj_length)
+
+
+    if state_idx is None:
+        state_idx = np.arange(data["obs"].shape[1])
+    
+    if states_as_act and act_idx is not None:
+        act = data["obs"][data_idx]
+    elif act_idx is None:
+        act_idx = np.arange(data["action"].shape[1])
+        act = data["action"][data_idx]
+    else:
+        act = data["action"][data_idx]
+    
+      
+    obs = data["obs"][data_idx]
+    next_obs = data["next_obs"][data_idx]
+    reward = data["reward"][data_idx]
+    done = data["done"][data_idx]
+
+    if filter:
+        obs = filter_med_lowpass(obs)
+        act = filter_med_lowpass(act)
+        next_obs = filter_med_lowpass(next_obs)
+
+    if cut_first_last_traj and traj_length is not None:
+        new_traj_length = traj_length - traj_clip
+        
+        obs = obs[new_traj_length : -new_traj_length]
+        act = act[new_traj_length : -new_traj_length]
+        next_obs = next_obs[new_traj_length : -new_traj_length]
+        reward = reward[new_traj_length : -new_traj_length]
+        done = done[new_traj_length : -new_traj_length]
+
+
+
+    traj_indices = []
+    if traj_length is not None:
+        cur_idx = 0
+
+        for _ in range(len(traj_idx)):
+            traj_indices.append([int(cur_idx), int(cur_idx + traj_length - traj_clip)])
+            cur_idx += traj_length - traj_clip
+
+    # print(traj_indices or [])
+    np.savez(
+            save_dir + "/replay_buffer.npz",
+            obs=obs[:,state_idx],
+            next_obs=next_obs[:,state_idx],
+            action=act[:,act_idx],
+            reward=reward,
+            done=done,
+            trajectory_indices=traj_indices,
+        )
+
+
+def cut_off_traj_starts_idx(total_length, cutoff_length = 100, traj_length = 1500):
+
+    if traj_length is None:
+        return np.arange(total_length)
+
+    num_traj = total_length//traj_length
+
+    idx = np.arange(total_length)
+
+    for traj in range(num_traj):
+        idx[traj*traj_length:traj*traj_length+ cutoff_length] = -1
+
+    return idx[idx != -1]
+
+def seed_everything(seed: int):
+    '''
+    https://gist.github.com/ihoromi4/b681a9088f348942b01711f251e5f964
+    '''
+    import random, os
+    import numpy as np
+    import torch
+    
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+
+
+if __name__ == "__main__":
+    pass
 

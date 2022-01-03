@@ -132,3 +132,6 @@ dmypy.json
 build/
 devel/
 logs/
+Logs/
+test_plots/
+rosbag_record_folder/
